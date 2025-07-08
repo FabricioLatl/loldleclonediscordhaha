@@ -1,6 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import GuessRow from './components/GuessRow';
 import champs from '../champs.json';
+
+const EMOJI_MAP = {
+  correct: '🟩',
+  partial: '🟨',
+  wrong: '🟥',
+  low: '🔼',
+  high: '🔽',
+};
+
+const split = (str = '') => str.split(',').map((s) => s.trim());
+
+const compareValue = (val, ans) => {
+  if (val === undefined || ans === undefined) return 'wrong';
+  if (val === ans) return 'correct';
+  const valArr = split(val);
+  const ansArr = split(ans);
+  if (valArr.some((v) => ansArr.includes(v))) return 'partial';
+  return 'wrong';
+};
 
 const ATTRIBUTES = [
   { key: 'region', label: 'Region' },
@@ -47,6 +66,38 @@ export default function App() {
     setGuesses([...guesses, champ]);
     setInput('');
   };
+
+  // Share Sheet after winning
+  useEffect(() => {
+    if (!won) return;
+
+    const lines = guesses.map((g) => {
+      const statuses = [
+        compareValue(g.region, answer.region),
+        compareValue(g.resource, answer.resource),
+        compareValue(g.lane, answer.lane),
+        compareValue(g.genre, answer.genre),
+        compareValue(g.attackType, answer.attackType),
+        compareValue(g.gender, answer.gender),
+        g.releaseDate === answer.releaseDate
+          ? 'correct'
+          : g.releaseDate < answer.releaseDate
+          ? 'low'
+          : 'high',
+      ];
+      return statuses.map((s) => EMOJI_MAP[s] || '🟥').join('');
+    });
+
+    const shareText = `I solved LoLdle in ${guesses.length}/8\n${lines.join('\n')}`;
+
+    if (window.DiscordSDK?.commands?.openShare) {
+      window.DiscordSDK.commands.openShare({
+        name: 'LoLdle',
+        description: shareText,
+        url: window.location.href,
+      });
+    }
+  }, [won]);
 
   return (
     <div className="app">
