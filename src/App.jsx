@@ -71,37 +71,53 @@ export default function App() {
   useEffect(() => {
     if (!won) return;
 
-    const lines = guesses.map((g) => {
-      const statuses = [
-        compareValue(g.region, answer.region),
-        compareValue(g.resource, answer.resource),
-        compareValue(g.lane, answer.lane),
-        compareValue(g.genre, answer.genre),
-        compareValue(g.attackType, answer.attackType),
-        compareValue(g.gender, answer.gender),
-        g.releaseDate === answer.releaseDate
-          ? 'correct'
-          : g.releaseDate < answer.releaseDate
-          ? 'low'
-          : 'high',
-      ];
-      return statuses.map((s) => EMOJI_MAP[s] || '🟥').join('');
-    });
-
-    const shareText = `I solved LoLdle in ${guesses.length}/8\n${lines.join('\n')}`;
-
-    if (window.DiscordSDK?.commands?.openShare) {
-      window.DiscordSDK.commands.openShare({
-        name: 'LoLdle',
-        description: shareText,
-        url: window.location.href,
+    const run = async () => {
+      const lines = guesses.map((g) => {
+        const statuses = [
+          compareValue(g.region, answer.region),
+          compareValue(g.resource, answer.resource),
+          compareValue(g.lane, answer.lane),
+          compareValue(g.genre, answer.genre),
+          compareValue(g.attackType, answer.attackType),
+          compareValue(g.gender, answer.gender),
+          g.releaseDate === answer.releaseDate
+            ? 'correct'
+            : g.releaseDate < answer.releaseDate
+            ? 'low'
+            : 'high',
+        ];
+        return statuses.map((s) => EMOJI_MAP[s] || '🟥').join('');
       });
-    }
+
+      const shareText = `I solved LoLdle in ${guesses.length}/8\n${lines.join('\n')}`;
+
+      // Send lobby feed message first
+      try {
+        if (window.DiscordSDK?.commands?.lobbies?.sendLobbyMessage) {
+          await window.DiscordSDK.commands.lobbies.sendLobbyMessage({
+            content: shareText,
+          });
+        }
+      } catch (err) {
+        console.error('Error sending lobby message', err);
+      }
+
+      // Fallback: open share sheet for manual send
+      if (window.DiscordSDK?.commands?.openShare) {
+        window.DiscordSDK.commands.openShare({
+          name: 'LoLdle',
+          description: shareText,
+          url: window.location.href,
+        });
+      }
+    };
+
+    run();
   }, [won]);
 
   return (
     <div className="app">
-      <h1 className="title">LoLdle Daily</h1>
+      <h1 className="title">LoLdle Daily final finished woo</h1>
 
       <form onSubmit={handleSubmit} className="guess-form">
         <input
