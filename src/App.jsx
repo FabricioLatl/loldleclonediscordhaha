@@ -37,7 +37,23 @@ function dayOfYear(date) {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
+// Simple hook to pipe debug messages into UI
+function useDebug() {
+  const [logs, setLogs] = useState([]);
+
+  const log = (...args) => {
+    const msg = args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+    setLogs((prev) => [...prev.slice(-99), msg]); // keep last 100
+    // Also forward to real console
+    // eslint-disable-next-line no-console
+    console.log(...args);
+  };
+
+  return [logs, log];
+}
+
 export default function App() {
+  const [logs, log] = useDebug();
   const [input, setInput] = useState('');
   const [guesses, setGuesses] = useState([]);
 
@@ -55,6 +71,7 @@ export default function App() {
     if (!input.trim()) return;
     const champ = champs.find((c) => c.name.toLowerCase() === input.trim().toLowerCase());
     if (!champ) {
+      log('Champion not found:', input);
       alert('Champion not found!');
       return;
     }
@@ -71,7 +88,7 @@ export default function App() {
   useEffect(() => {
     if (!won) return;
 
-    const run = async () => {
+    (async () => {
       const lines = guesses.map((g) => {
         const statuses = [
           compareValue(g.region, answer.region),
@@ -90,35 +107,61 @@ export default function App() {
       });
 
       const shareText = `I solved LoLdle in ${guesses.length}/8\n${lines.join('\n')}`;
+      
+      log('Won! Attempting to send lobby message...');
+      log('Share text:', shareText);
+      log('DiscordSDK available:', !!window.DiscordSDK);
+      log('DiscordSDK commands:', window.DiscordSDK?.commands ? Object.keys(window.DiscordSDK.commands) : 'none');
 
-      // Send lobby feed message first
+      // Try different possible lobby message methods
       try {
+        // Method 1: lobbies.sendLobbyMessage
         if (window.DiscordSDK?.commands?.lobbies?.sendLobbyMessage) {
-          await window.DiscordSDK.commands.lobbies.sendLobbyMessage({
+          log('Trying lobbies.sendLobbyMessage...');
+          const result = await window.DiscordSDK.commands.lobbies.sendLobbyMessage({
             content: shareText,
           });
+          log('lobbies.sendLobbyMessage result:', result);
+        }
+        // Method 2: sendLobbyMessage directly
+        else if (window.DiscordSDK?.commands?.sendLobbyMessage) {
+          log('Trying sendLobbyMessage...');
+          const result = await window.DiscordSDK.commands.sendLobbyMessage({
+            content: shareText,
+          });
+          log('sendLobbyMessage result:', result);
+        }
+        // Method 3: activityInstance.sendChatMessage
+        else if (window.DiscordSDK?.commands?.activityInstance?.sendChatMessage) {
+          log('Trying activityInstance.sendChatMessage...');
+          const result = await window.DiscordSDK.commands.activityInstance.sendChatMessage({
+            content: shareText,
+          });
+          log('activityInstance.sendChatMessage result:', result);
+        }
+        // Method 4: sendChatMessage directly
+        else if (window.DiscordSDK?.commands?.sendChatMessage) {
+          log('Trying sendChatMessage...');
+          const result = await window.DiscordSDK.commands.sendChatMessage({
+            content: shareText,
+          });
+          log('sendChatMessage result:', result);
+        }
+        else {
+          log('No lobby message method found!');
+          log('Available methods:', window.DiscordSDK?.commands ? Object.keys(window.DiscordSDK.commands) : 'DiscordSDK not available');
         }
       } catch (err) {
-        console.error('Error sending lobby message', err);
+        log('Error sending lobby message:', err.message);
+        log('Error details:', err);
       }
-
-      // Fallback: open share sheet for manual send
-      if (window.DiscordSDK?.commands?.openShare) {
-        window.DiscordSDK.commands.openShare({
-          name: 'LoLdle',
-          description: shareText,
-          url: window.location.href,
-        });
-      }
-    };
-
-    run();
-  }, [won]);
+    })();
+  }, [won, guesses, answer, log]);
 
   return (
     <div className="app">
       <h1 className="title">LoLdle Daily final finished woo</h1>
-
+c
       <form onSubmit={handleSubmit} className="guess-form">
         <input
           list="champions"
@@ -156,6 +199,15 @@ export default function App() {
       <footer>
         <small>Data from Riot Games · {new Date().getFullYear()}</small>
       </footer>
+
+      <details className="debug-box">
+        <summary>Debug Log</summary>
+        <pre>
+          {logs.map((l, i) => (
+            <div key={i}>{l}</div>
+          ))}
+        </pre>
+      </details>
     </div>
   );
 } 

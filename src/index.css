@@ -123,4 +123,29 @@ body {
 
 .fail {
   background: #c62828;
+}
+
+.debug-box {
+  margin-top: 20px;
+  max-height: 160px;
+  overflow-y: auto;
+  background: #00000088;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #b0b0b0;
+}
+
+.debug-box summary {
+  cursor: pointer;
+  color: #ffffff;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.debug-box pre {
+  margin: 0;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
 } 
