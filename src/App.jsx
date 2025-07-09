@@ -182,65 +182,34 @@ export default function App() {
 
       const shareText = `I solved LoLdle in ${guesses.length}/8\n${lines.join('\n')}`;
       
-      log('Won! Attempting to send lobby message...');
-      log('Share text:', shareText);
-
-      try {
-        // Try different possible methods for sending messages
-        if (discordSDK.commands.shareLink) {
-          log('Trying shareLink for win message...');
-          const result = await discordSDK.commands.shareLink({
-            url: window.location.href,
-            text: shareText,
-          });
-          log('shareLink result:', result);
-          setLobbyMessageSent(true);
-        }
-        else {
-          log('No message sending method found!');
-          log('Available methods:', discordSDK.commands ? Object.keys(discordSDK.commands) : 'none');
-          
-          // Let's try to find any method that might work for sharing
-          const availableMethods = Object.keys(discordSDK.commands);
-          const potentialMethods = availableMethods.filter(method => 
-            method.includes('share') || 
-            method.includes('Share') || 
-            method.includes('send') || 
-            method.includes('Send') ||
-            method.includes('message') || 
-            method.includes('Message') ||
-            method.includes('activity') ||
-            method.includes('Activity')
-          );
-          log('Potential sharing methods:', potentialMethods);
-          
-          // Try the first potential method if any exist
-          if (potentialMethods.length > 0) {
-            const methodToTry = potentialMethods[0];
-            log(`Trying method: ${methodToTry}`);
-            try {
-              const result = await discordSDK.commands[methodToTry]({
-                content: shareText,
-                text: shareText,
-                message: shareText,
-                description: shareText,
-                url: window.location.href
-              });
-              log(`${methodToTry} result:`, result);
-              setLobbyMessageSent(true);
-            } catch (methodErr) {
-              log(`${methodToTry} failed:`, methodErr.message);
-            }
-          }
-        }
-      } catch (err) {
-        log('Error sending message:', err.message);
-        log('Error details:', err);
-      }
+      log('Won! Skipping Discord integration, showing results screen...');
+      setLobbyMessageSent(true);
     };
 
     sendLobbyMessage();
   }, [won, discordReady, discordSDK, lobbyMessageSent, guesses, answer, log]);
+
+  // Generate emoji grid for display
+  const getEmojiGrid = () => {
+    if (!won) return null;
+    
+    return guesses.map((g) => {
+      const statuses = [
+        compareValue(g.region, answer.region),
+        compareValue(g.resource, answer.resource),
+        compareValue(g.lane, answer.lane),
+        compareValue(g.genre, answer.genre),
+        compareValue(g.attackType, answer.attackType),
+        compareValue(g.gender, answer.gender),
+        g.releaseDate === answer.releaseDate
+          ? 'correct'
+          : g.releaseDate < answer.releaseDate
+          ? 'low'
+          : 'high',
+      ];
+      return statuses.map((s) => EMOJI_MAP[s] || '🟥').join('');
+    });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -275,6 +244,30 @@ export default function App() {
       {won && (
         <div className="win-message">
           🎉 You found {answer.name} in {guesses.length} guesses!
+        </div>
+      )}
+
+      {won && (
+        <div className="results-screen">
+          <div className="results-header">
+            <h2>LoLdle Results</h2>
+            <div className="score">Got it in {guesses.length}/8! 🎯</div>
+          </div>
+          
+          <div className="emoji-grid">
+            {getEmojiGrid()?.map((line, i) => (
+              <div key={i} className="emoji-row">
+                {line}
+              </div>
+            ))}
+          </div>
+          
+          <div className="results-footer">
+          
+            <div className="game-info">
+              LoLdle • {new Date().toLocaleDateString()}
+            </div>
+          </div>
         </div>
       )}
 

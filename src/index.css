@@ -155,4 +155,61 @@ body {
   font-family: monospace;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.results-screen {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  padding: 24px;
+  margin: 20px 0;
+  text-align: center;
+  color: white;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.results-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.score {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  opacity: 0.9;
+}
+
+.emoji-grid {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', monospace;
+}
+
+.emoji-row {
+  font-size: 1.8rem;
+  letter-spacing: 4px;
+  line-height: 1.2;
+}
+
+.results-footer {
+  margin-top: 16px;
+}
+
+.answer-reveal {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+
+.answer-reveal strong {
+  color: #ffd700;
+}
+
+.game-info {
+  font-size: 0.9rem;
+  opacity: 0.8;
 } 
