@@ -74,22 +74,75 @@ export default function App() {
     const initDiscord = async () => {
       try {
         log('Initializing Discord SDK...');
-        // You need to replace 'YOUR_CLIENT_ID' with your actual Discord app client ID
-        const sdk = new DiscordSDK('1392271229989294080');
-        setDiscordSDK(sdk);
+        
+        // Try different initialization approaches
+        let sdk;
+        
+        // Method 1: Standard initialization
+        try {
+          sdk = new DiscordSDK('1392271229989294080');
+          setDiscordSDK(sdk);
+          log('SDK instance created');
+        } catch (sdkErr) {
+          log('Error creating SDK instance:', sdkErr.message);
+          return;
+        }
         
         log('Waiting for Discord ready...');
-        await sdk.ready();
-        setDiscordReady(true);
-        log('Discord SDK ready!');
+        
+        // Add timeout to prevent hanging
+        const readyPromise = sdk.ready();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Discord ready timeout after 10 seconds')), 10000)
+        );
+        
+        try {
+          await Promise.race([readyPromise, timeoutPromise]);
+          setDiscordReady(true);
+          log('Discord SDK ready!');
+        } catch (readyErr) {
+          log('Ready failed:', readyErr.message);
+          
+          // Try to continue anyway and see what commands are available
+          setDiscordReady(true);
+          log('Continuing without proper ready state...');
+        }
         
         // Log available commands
         if (sdk.commands) {
           log('Available commands:', Object.keys(sdk.commands));
+        } else {
+          log('No commands available');
         }
+        
+        // Send start message
+        try {
+          if (sdk.commands?.sendActivityMessage) {
+            log('Sending start message...');
+            await sdk.commands.sendActivityMessage({
+              content: '🎮 Started playing LoLdle!'
+            });
+            log('Start message sent!');
+          } else if (sdk.commands?.openShare) {
+            log('sendActivityMessage not available, using openShare for start message');
+            await sdk.commands.openShare({
+              name: 'LoLdle',
+              description: '🎮 Started playing LoLdle!'
+            });
+          } else {
+            log('No message sending methods available');
+          }
+        } catch (startErr) {
+          log('Error sending start message:', startErr.message);
+        }
+        
       } catch (err) {
         log('Discord SDK initialization error:', err.message);
+        log('Error stack:', err.stack);
         log('Running outside Discord or SDK not available');
+        
+        // Try to continue without Discord features
+        setDiscordReady(false);
       }
     };
 
