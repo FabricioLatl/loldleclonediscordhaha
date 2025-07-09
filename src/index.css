@@ -50,22 +50,44 @@ body {
   border-radius: 6px;
   font-weight: bold;
   cursor: pointer;
-  transition: background 0.2s;
 }
 
 .guess-form button:hover {
-  background: #009b87;
+  background: #00a693;
 }
 
-.board {
+.win-message {
+  text-align: center;
+  background: #4caf50;
+  color: white;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.table {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.header {
+  display: flex;
+  background: #2a2d3a;
+  border-radius: 8px;
+  padding: 8px;
+  font-weight: bold;
+  color: #ffffff;
 }
 
 .row {
   display: flex;
-  width: 100%;
+  border-radius: 8px;
+  padding: 8px;
+  background: #1e1f26;
 }
 
 .cell {
@@ -75,54 +97,39 @@ body {
   text-align: center;
   border-radius: 4px;
   font-size: 0.9rem;
-  white-space: normal; /* allow wrapping */
-}
-
-.cell.name {
-  flex: 1.2;
-  font-weight: bold;
-}
-
-.header .cell {
-  background: #282a36;
-  font-weight: bold;
+  white-space: normal;
 }
 
 .correct {
-  background: #2e7d32;
+  background: #4caf50;
+  color: white;
 }
 
 .partial {
-  background: #f9a825;
+  background: #ff9800;
+  color: white;
 }
 
 .wrong {
-  background: #c62828;
+  background: #f44336;
+  color: white;
 }
 
 .low {
-  background: #1976d2;
+  background: #2196f3;
+  color: white;
 }
 
 .high {
-  background: #6a1b9a;
+  background: #9c27b0;
+  color: white;
 }
 
-.result {
-  margin: 22px auto;
+.footer {
   text-align: center;
-  font-size: 1.2rem;
-  width: fit-content;
-  padding: 12px 20px;
-  border-radius: 8px;
-}
-
-.success {
-  background: #2e7d32;
-}
-
-.fail {
-  background: #c62828;
+  margin-top: 20px;
+  font-size: 0.9rem;
+  color: #888;
 }
 
 .debug-box {

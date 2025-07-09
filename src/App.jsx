@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import GuessRow from './components/GuessRow';
 import champs from '../champs.json';
+import { DiscordSDK } from '@discord/embedded-app-sdk';
 
 const EMOJI_MAP = {
   correct: '🟩',
@@ -56,6 +57,7 @@ export default function App() {
   const [logs, log] = useDebug();
   const [input, setInput] = useState('');
   const [guesses, setGuesses] = useState([]);
+  const [discordSDK, setDiscordSDK] = useState(null);
   const [discordReady, setDiscordReady] = useState(false);
   const [lobbyMessageSent, setLobbyMessageSent] = useState(false);
 
@@ -71,17 +73,23 @@ export default function App() {
   useEffect(() => {
     const initDiscord = async () => {
       try {
-        if (typeof window !== 'undefined' && window.DiscordSDK) {
-          log('Discord SDK found, initializing...');
-          await window.DiscordSDK.ready();
-          setDiscordReady(true);
-          log('Discord SDK ready!');
-          log('Available commands:', Object.keys(window.DiscordSDK.commands || {}));
-        } else {
-          log('Discord SDK not found - running outside Discord');
+        log('Initializing Discord SDK...');
+        // You need to replace 'YOUR_CLIENT_ID' with your actual Discord app client ID
+        const sdk = new DiscordSDK('1392271229989294080');
+        setDiscordSDK(sdk);
+        
+        log('Waiting for Discord ready...');
+        await sdk.ready();
+        setDiscordReady(true);
+        log('Discord SDK ready!');
+        
+        // Log available commands
+        if (sdk.commands) {
+          log('Available commands:', Object.keys(sdk.commands));
         }
       } catch (err) {
         log('Discord SDK initialization error:', err.message);
+        log('Running outside Discord or SDK not available');
       }
     };
 
@@ -90,7 +98,7 @@ export default function App() {
 
   // Send lobby message when won (only once)
   useEffect(() => {
-    if (!won || lobbyMessageSent) return;
+    if (!won || lobbyMessageSent || !discordReady || !discordSDK) return;
 
     const sendLobbyMessage = async () => {
       const lines = guesses.map((g) => {
@@ -114,52 +122,38 @@ export default function App() {
       
       log('Won! Attempting to send lobby message...');
       log('Share text:', shareText);
-      log('DiscordSDK available:', !!window.DiscordSDK);
-      log('Discord ready:', discordReady);
-
-      if (!discordReady) {
-        log('Discord SDK not ready yet');
-        return;
-      }
 
       try {
-        // Try different possible lobby message methods
-        if (window.DiscordSDK?.commands?.sendActivityMessage) {
+        // Try different possible methods for sending messages
+        if (discordSDK.commands.sendActivityMessage) {
           log('Trying sendActivityMessage...');
-          const result = await window.DiscordSDK.commands.sendActivityMessage({
+          const result = await discordSDK.commands.sendActivityMessage({
             content: shareText,
           });
           log('sendActivityMessage result:', result);
           setLobbyMessageSent(true);
         }
-        else if (window.DiscordSDK?.commands?.lobbies?.sendLobbyMessage) {
-          log('Trying lobbies.sendLobbyMessage...');
-          const result = await window.DiscordSDK.commands.lobbies.sendLobbyMessage({
-            content: shareText,
+        else if (discordSDK.commands.openShare) {
+          log('Trying openShare as fallback...');
+          const result = await discordSDK.commands.openShare({
+            name: 'LoLdle',
+            description: shareText,
           });
-          log('lobbies.sendLobbyMessage result:', result);
-          setLobbyMessageSent(true);
-        }
-        else if (window.DiscordSDK?.commands?.sendLobbyMessage) {
-          log('Trying sendLobbyMessage...');
-          const result = await window.DiscordSDK.commands.sendLobbyMessage({
-            content: shareText,
-          });
-          log('sendLobbyMessage result:', result);
+          log('openShare result:', result);
           setLobbyMessageSent(true);
         }
         else {
-          log('No lobby message method found!');
-          log('Available methods:', window.DiscordSDK?.commands ? Object.keys(window.DiscordSDK.commands) : 'none');
+          log('No message sending method found!');
+          log('Available methods:', discordSDK.commands ? Object.keys(discordSDK.commands) : 'none');
         }
       } catch (err) {
-        log('Error sending lobby message:', err.message);
+        log('Error sending message:', err.message);
         log('Error details:', err);
       }
     };
 
     sendLobbyMessage();
-  }, [won, discordReady, lobbyMessageSent, guesses, answer, log]);
+  }, [won, discordReady, discordSDK, lobbyMessageSent, guesses, answer, log]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
