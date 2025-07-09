@@ -93,8 +93,11 @@ export default function App() {
       }
     };
 
-    initDiscord();
-  }, [log]);
+    // Only initialize once
+    if (!discordSDK) {
+      initDiscord();
+    }
+  }, []); // Empty dependency array - only run once
 
   // Send lobby message when won (only once)
   useEffect(() => {
