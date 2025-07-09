@@ -117,15 +117,26 @@ export default function App() {
         
         // Send start message
         try {
-          if (discordSDK.commands?.openShare) {
-            log('Sending start message...');
-            await discordSDK.commands.openShare({
-              name: 'LoLdle',
-              description: '🎮 Started playing LoLdle!'
+          if (discordSDK.commands?.shareLink) {
+            log('Sending start message with shareLink...');
+            await discordSDK.commands.shareLink({
+              url: window.location.href,
+              text: '🎮 Started playing LoLdle!'
             });
             log('Start message sent!');
+          } else if (discordSDK.commands?.startPurchase) {
+            log('Trying alternative method...');
+            // This might not work but let's see what happens
           } else {
             log('No message sending methods available');
+            log('Trying to call any share-related method...');
+            
+            // Let's try to call some methods that might exist
+            const availableMethods = Object.keys(discordSDK.commands);
+            const shareMethods = availableMethods.filter(method => 
+              method.includes('share') || method.includes('Share') || method.includes('message') || method.includes('Message')
+            );
+            log('Share-related methods found:', shareMethods);
           }
         } catch (startErr) {
           log('Error sending start message:', startErr.message);
@@ -176,18 +187,51 @@ export default function App() {
 
       try {
         // Try different possible methods for sending messages
-        if (discordSDK.commands.openShare) {
-          log('Trying openShare for win message...');
-          const result = await discordSDK.commands.openShare({
-            name: 'LoLdle',
-            description: shareText,
+        if (discordSDK.commands.shareLink) {
+          log('Trying shareLink for win message...');
+          const result = await discordSDK.commands.shareLink({
+            url: window.location.href,
+            text: shareText,
           });
-          log('openShare result:', result);
+          log('shareLink result:', result);
           setLobbyMessageSent(true);
         }
         else {
           log('No message sending method found!');
           log('Available methods:', discordSDK.commands ? Object.keys(discordSDK.commands) : 'none');
+          
+          // Let's try to find any method that might work for sharing
+          const availableMethods = Object.keys(discordSDK.commands);
+          const potentialMethods = availableMethods.filter(method => 
+            method.includes('share') || 
+            method.includes('Share') || 
+            method.includes('send') || 
+            method.includes('Send') ||
+            method.includes('message') || 
+            method.includes('Message') ||
+            method.includes('activity') ||
+            method.includes('Activity')
+          );
+          log('Potential sharing methods:', potentialMethods);
+          
+          // Try the first potential method if any exist
+          if (potentialMethods.length > 0) {
+            const methodToTry = potentialMethods[0];
+            log(`Trying method: ${methodToTry}`);
+            try {
+              const result = await discordSDK.commands[methodToTry]({
+                content: shareText,
+                text: shareText,
+                message: shareText,
+                description: shareText,
+                url: window.location.href
+              });
+              log(`${methodToTry} result:`, result);
+              setLobbyMessageSent(true);
+            } catch (methodErr) {
+              log(`${methodToTry} failed:`, methodErr.message);
+            }
+          }
         }
       } catch (err) {
         log('Error sending message:', err.message);
