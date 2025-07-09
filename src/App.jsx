@@ -117,18 +117,13 @@ export default function App() {
         
         // Send start message
         try {
-          if (sdk.commands?.sendActivityMessage) {
+          if (discordSDK.commands?.openShare) {
             log('Sending start message...');
-            await sdk.commands.sendActivityMessage({
-              content: '🎮 Started playing LoLdle!'
-            });
-            log('Start message sent!');
-          } else if (sdk.commands?.openShare) {
-            log('sendActivityMessage not available, using openShare for start message');
-            await sdk.commands.openShare({
+            await discordSDK.commands.openShare({
               name: 'LoLdle',
               description: '🎮 Started playing LoLdle!'
             });
+            log('Start message sent!');
           } else {
             log('No message sending methods available');
           }
@@ -181,16 +176,8 @@ export default function App() {
 
       try {
         // Try different possible methods for sending messages
-        if (discordSDK.commands.sendActivityMessage) {
-          log('Trying sendActivityMessage...');
-          const result = await discordSDK.commands.sendActivityMessage({
-            content: shareText,
-          });
-          log('sendActivityMessage result:', result);
-          setLobbyMessageSent(true);
-        }
-        else if (discordSDK.commands.openShare) {
-          log('Trying openShare as fallback...');
+        if (discordSDK.commands.openShare) {
+          log('Trying openShare for win message...');
           const result = await discordSDK.commands.openShare({
             name: 'LoLdle',
             description: shareText,
