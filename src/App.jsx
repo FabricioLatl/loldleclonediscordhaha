@@ -56,39 +56,43 @@ export default function App() {
   const [logs, log] = useDebug();
   const [input, setInput] = useState('');
   const [guesses, setGuesses] = useState([]);
+  const [discordReady, setDiscordReady] = useState(false);
+  const [lobbyMessageSent, setLobbyMessageSent] = useState(false);
 
   const answer = useMemo(() => {
     const today = new Date();
-    const idx = (dayOfYear(today) * 17) % champs.length; // 17 is arbitrary prime multiplier
+    const idx = (dayOfYear(today) * 17) % champs.length;
     return champs[idx];
   }, []);
 
-  const remaining = 8 - guesses.length;
-  const won = guesses.some((g) => g.id === answer.id);
+  const won = guesses.length > 0 && guesses[guesses.length - 1].name === answer.name;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    const champ = champs.find((c) => c.name.toLowerCase() === input.trim().toLowerCase());
-    if (!champ) {
-      log('Champion not found:', input);
-      alert('Champion not found!');
-      return;
-    }
-    if (guesses.find((g) => g.id === champ.id)) {
-      setInput('');
-      return;
-    }
-    if (guesses.length >= 8 || won) return;
-    setGuesses([...guesses, champ]);
-    setInput('');
-  };
-
-  // Share Sheet after winning
+  // Initialize Discord SDK
   useEffect(() => {
-    if (!won) return;
+    const initDiscord = async () => {
+      try {
+        if (typeof window !== 'undefined' && window.DiscordSDK) {
+          log('Discord SDK found, initializing...');
+          await window.DiscordSDK.ready();
+          setDiscordReady(true);
+          log('Discord SDK ready!');
+          log('Available commands:', Object.keys(window.DiscordSDK.commands || {}));
+        } else {
+          log('Discord SDK not found - running outside Discord');
+        }
+      } catch (err) {
+        log('Discord SDK initialization error:', err.message);
+      }
+    };
 
-    (async () => {
+    initDiscord();
+  }, [log]);
+
+  // Send lobby message when won (only once)
+  useEffect(() => {
+    if (!won || lobbyMessageSent) return;
+
+    const sendLobbyMessage = async () => {
       const lines = guesses.map((g) => {
         const statuses = [
           compareValue(g.region, answer.region),
@@ -111,102 +115,107 @@ export default function App() {
       log('Won! Attempting to send lobby message...');
       log('Share text:', shareText);
       log('DiscordSDK available:', !!window.DiscordSDK);
-      log('DiscordSDK commands:', window.DiscordSDK?.commands ? Object.keys(window.DiscordSDK.commands) : 'none');
+      log('Discord ready:', discordReady);
 
-      // Try different possible lobby message methods
+      if (!discordReady) {
+        log('Discord SDK not ready yet');
+        return;
+      }
+
       try {
-        // Method 1: lobbies.sendLobbyMessage
-        if (window.DiscordSDK?.commands?.lobbies?.sendLobbyMessage) {
+        // Try different possible lobby message methods
+        if (window.DiscordSDK?.commands?.sendActivityMessage) {
+          log('Trying sendActivityMessage...');
+          const result = await window.DiscordSDK.commands.sendActivityMessage({
+            content: shareText,
+          });
+          log('sendActivityMessage result:', result);
+          setLobbyMessageSent(true);
+        }
+        else if (window.DiscordSDK?.commands?.lobbies?.sendLobbyMessage) {
           log('Trying lobbies.sendLobbyMessage...');
           const result = await window.DiscordSDK.commands.lobbies.sendLobbyMessage({
             content: shareText,
           });
           log('lobbies.sendLobbyMessage result:', result);
+          setLobbyMessageSent(true);
         }
-        // Method 2: sendLobbyMessage directly
         else if (window.DiscordSDK?.commands?.sendLobbyMessage) {
           log('Trying sendLobbyMessage...');
           const result = await window.DiscordSDK.commands.sendLobbyMessage({
             content: shareText,
           });
           log('sendLobbyMessage result:', result);
-        }
-        // Method 3: activityInstance.sendChatMessage
-        else if (window.DiscordSDK?.commands?.activityInstance?.sendChatMessage) {
-          log('Trying activityInstance.sendChatMessage...');
-          const result = await window.DiscordSDK.commands.activityInstance.sendChatMessage({
-            content: shareText,
-          });
-          log('activityInstance.sendChatMessage result:', result);
-        }
-        // Method 4: sendChatMessage directly
-        else if (window.DiscordSDK?.commands?.sendChatMessage) {
-          log('Trying sendChatMessage...');
-          const result = await window.DiscordSDK.commands.sendChatMessage({
-            content: shareText,
-          });
-          log('sendChatMessage result:', result);
+          setLobbyMessageSent(true);
         }
         else {
           log('No lobby message method found!');
-          log('Available methods:', window.DiscordSDK?.commands ? Object.keys(window.DiscordSDK.commands) : 'DiscordSDK not available');
+          log('Available methods:', window.DiscordSDK?.commands ? Object.keys(window.DiscordSDK.commands) : 'none');
         }
       } catch (err) {
         log('Error sending lobby message:', err.message);
         log('Error details:', err);
       }
-    })();
-  }, [won, guesses, answer, log]);
+    };
+
+    sendLobbyMessage();
+  }, [won, discordReady, lobbyMessageSent, guesses, answer, log]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const champ = champs.find((c) => c.name.toLowerCase() === input.toLowerCase());
+    if (!champ) return;
+
+    setGuesses((prev) => [...prev, champ]);
+    setInput('');
+  };
 
   return (
     <div className="app">
-      <h1 className="title">LoLdle Daily final finished woo</h1>
-c
-      <form onSubmit={handleSubmit} className="guess-form">
+      <h1 className="title">LoLdle</h1>
+      <form className="guess-form" onSubmit={handleSubmit}>
         <input
-          list="champions"
-          placeholder="Guess a champion..."
+          type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          placeholder="Guess a champion..."
+          list="champions"
         />
         <datalist id="champions">
-          {champs.map((c) => (
-            <option key={c.id} value={c.name} />
+          {champs.map((champ) => (
+            <option key={champ.name} value={champ.name} />
           ))}
         </datalist>
         <button type="submit">Guess</button>
       </form>
 
-      <div className="board">
-        <div className="row header">
-          <div className="cell name">Name</div>
-          {ATTRIBUTES.map((a) => (
-            <div key={a.key} className="cell">
-              {a.label}
+      {won && (
+        <div className="win-message">
+          🎉 You found {answer.name} in {guesses.length} guesses!
+        </div>
+      )}
+
+      <div className="table">
+        <div className="header">
+          <div className="cell">Name</div>
+          {ATTRIBUTES.map((attr) => (
+            <div key={attr.key} className="cell">
+              {attr.label}
             </div>
           ))}
         </div>
-        {guesses.map((g, idx) => (
-          <GuessRow key={idx} champ={g} answer={answer} />
+        {guesses.map((guess, i) => (
+          <GuessRow key={i} champ={guess} answer={answer} />
         ))}
       </div>
 
-      {won && <div className="result success">🎉 You found {answer.name} in {guesses.length} guesses!</div>}
-      {!won && remaining === 0 && (
-        <div className="result fail">Out of guesses! The answer was {answer.name}.</div>
-      )}
-
-      <footer>
-        <small>Data from Riot Games · {new Date().getFullYear()}</small>
-      </footer>
+      <div className="footer">Data from Riot Games • 2025</div>
 
       <details className="debug-box">
-        <summary>Debug Log</summary>
-        <pre>
-          {logs.map((l, i) => (
-            <div key={i}>{l}</div>
-          ))}
-        </pre>
+        <summary>Debug Log ({logs.length})</summary>
+        <pre>{logs.join('\n')}</pre>
       </details>
     </div>
   );
